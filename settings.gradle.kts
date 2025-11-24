@@ -20,5 +20,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "JSBridge"
-include(":app")
 include(":jsbridge")
