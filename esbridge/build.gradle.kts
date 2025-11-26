@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "name.yangyun.jsbridge"
+    namespace = "name.yangyun.esbridge"
     compileSdk = 36
 
     defaultConfig {
@@ -48,7 +48,7 @@ publishing {
     publications {
         create<MavenPublication>("release") {
             groupId = "name.yangyun"
-            artifactId = "JSBridge"
+            artifactId = "ESBridge"
             version = "1.0"
 
             afterEvaluate {

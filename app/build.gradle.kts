@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "name.yangyun.jsbridge"
+    namespace = "name.yangyun.esbridge"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "name.yangyun.jsbridge"
+        applicationId = "name.yangyun.esbridge"
         minSdk = 19
         targetSdk = 36
         versionCode = 1

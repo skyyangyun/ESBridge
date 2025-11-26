@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "JSBridge"
-include(":jsbridge")
+rootProject.name = "ESBridge"
+include(":esbridge")

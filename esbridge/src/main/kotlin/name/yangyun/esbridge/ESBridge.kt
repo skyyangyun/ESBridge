@@ -1,4 +1,4 @@
-package name.yangyun.jsbridge
+package name.yangyun.esbridge
 
 import android.util.Log
 import android.webkit.JavascriptInterface
@@ -25,9 +25,9 @@ typealias SyncHandler = (dict: JSONObject) -> JSONObject?
  */
 typealias Callback = (result: Result<JSONObject>) -> Unit
 
-class JSBridge(
+class ESBridge(
     val webview: WebView,
-    val name: String = "JSBridge"
+    val name: String = "ESBridge"
 ) {
     private val sync: MutableMap<String, SyncHandler> =  mutableMapOf()
     private val async: MutableMap<String, Handler> =  mutableMapOf()
@@ -51,7 +51,7 @@ $name._pi=0n // 承诺计数器
 
 // 构建事件流
 $name.${'$'}emitter = new EventTarget()
-$name.JSBridgeEvent = class JSBridgeEvent extends CustomEvent{
+$name.ESBridgeEvent = class ESBridgeEvent extends CustomEvent{
     constructor(type, json) {
         super(type, { detail: json });
         Object.defineProperty(this, 'detail', {
@@ -64,7 +64,7 @@ $name.JSBridgeEvent = class JSBridgeEvent extends CustomEvent{
 }
 """
             ) {
-                Log.i("JSBridge", "注入执行终了 $it")
+                Log.i("ESBridge", "注入执行终了 $it")
             }
         }
     }
@@ -74,15 +74,15 @@ $name.JSBridgeEvent = class JSBridgeEvent extends CustomEvent{
      */
     @JavascriptInterface
     fun _call(name: String, json: String): String {
-        Log.d("JSBridge", "同步调用： [$name]: $json")
+        Log.d("ESBridge", "同步调用： [$name]: $json")
         val handler = sync[name]
         if (handler == null) {
-            Log.e("JSBridge", "同步函数不存在")
+            Log.e("ESBridge", "同步函数不存在")
             return ""
         }
 
         val result = handler(JSONObject(json))
-        Log.d("JSBridge", "返回：$result")
+        Log.d("ESBridge", "返回：$result")
         return result.toString()
     }
 
@@ -91,11 +91,11 @@ $name.JSBridgeEvent = class JSBridgeEvent extends CustomEvent{
      */
     @JavascriptInterface
     fun _suspend(name: String, json: String, callback: String) {
-        Log.d("JSBridge", "异步调用： [$name]($callback): $json")
+        Log.d("ESBridge", "异步调用： [$name]($callback): $json")
 
         val handler = async[name]
         if (handler == null) {
-            Log.e("JSBridge", "异步函数不存在")
+            Log.e("ESBridge", "异步函数不存在")
             return
         }
 
@@ -103,8 +103,8 @@ $name.JSBridgeEvent = class JSBridgeEvent extends CustomEvent{
             val result: JSONObject? = handler(JSONObject(json))
             val output = if (result == null) "" else JSONObject.quote(result.toString())
             webview.post {
-                webview.evaluateJavascript("${this@JSBridge.name}._callbacks['$callback']($output)") {
-                    Log.d("JSBridge", "返回： $result $it")
+                webview.evaluateJavascript("${this@ESBridge.name}._callbacks['$callback']($output)") {
+                    Log.d("ESBridge", "返回： $result $it")
                 }
             }
         }
@@ -115,13 +115,13 @@ $name.JSBridgeEvent = class JSBridgeEvent extends CustomEvent{
      */
     @JavascriptInterface
     fun _promise(name: String, json: String) {
-        Log.d("JSBridge", "回调调用： [$name]: $json")
+        Log.d("ESBridge", "回调调用： [$name]: $json")
         val handler = callbacks[name]
         if (handler != null) {
             return handler(Result.success(JSONObject(json)))
         }
 
-        Log.e("JSBridge", "回调函数不存在")
+        Log.e("ESBridge", "回调函数不存在")
     }
 
     /**
@@ -176,7 +176,7 @@ return new Promise((resolve, reject) => {
      * 调用JS已注册的函数
      */
     fun call(name: String, data: JSONObject? = null, callback: Callback) {
-        Log.d("JSBridge", "请求JS函数：[$name]$data")
+        Log.d("ESBridge", "请求JS函数：[$name]$data")
         webview.post {
             webview.evaluateJavascript("""(() => {
 const result = ${this.name}.${'$'}hooks['$name'](${JSONObject.quote((data ?: "{}").toString())})
@@ -185,13 +185,13 @@ const id = 'p' + ${this.name}._pi++
 ${this.name}._promises[id]=result
 return id
 })()""") { raw ->
-                Log.d("JSBridge", "call返回结果：$raw")
+                Log.d("ESBridge", "call返回结果：$raw")
                 val result = JSONTokener(raw).nextValue() as String
                 if (!result.startsWith("p")) return@evaluateJavascript callback(Result.success(JSONObject(result)))
 
                 val timeout = scope.launch {
                     delay(3000)
-                    callback(Result.failure(Error("JSBridge 超时")))
+                    callback(Result.failure(Error("ESBridge 超时")))
                 }
                 callbacks.put(result) {
                     callbacks.remove(result)
@@ -200,7 +200,7 @@ return id
                 }
 
                 webview.evaluateJavascript("${this.name}._promises['$result'].then(result => ${this.name}._promise('$result', JSON.stringify(result)))") {
-                    Log.v("JSBridge", "承诺处理完毕 $it")
+                    Log.v("ESBridge", "承诺处理完毕 $it")
                 }
             }
         }
@@ -209,16 +209,16 @@ return id
     /**
      * 向JS分发事件
      */
-    fun dispatchEvent(event: JSBridgeEvent) {
+    fun dispatchEvent(event: ESBridgeEvent) {
         webview.post {
-            webview.evaluateJavascript("${this.name}.${'$'}emitter.dispatchEvent(new ${this.name}.JSBridgeEvent('${event.type}', ${JSONObject.quote(event.detail.toString())}))") {
-                Log.v("JSBridge", "事件分发完毕")
+            webview.evaluateJavascript("${this.name}.${'$'}emitter.dispatchEvent(new ${this.name}.ESBridgeEvent('${event.type}', ${JSONObject.quote(event.detail.toString())}))") {
+                Log.v("ESBridge", "事件分发完毕")
             }
         }
     }
 }
 
-class JSBridgeEvent(
+class ESBridgeEvent(
     val type: String,
     val detail: JSONObject,
 )
