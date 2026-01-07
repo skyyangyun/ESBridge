@@ -36,8 +36,10 @@ class ESBridge(
 
     init {
         webview.addJavascriptInterface(this, name)
-        webview.post {
-            webview.evaluateJavascript("""
+    }
+
+    fun onPageStarted() {
+        webview.evaluateJavascript("""
 // 构建回调
 $name._callbacks = {} // 用于接受从Android异步返回的数据
 $name._ci=0n // 回调计数器
@@ -52,21 +54,22 @@ $name._pi=0n // 承诺计数器
 // 构建事件流
 $name.${'$'}emitter = new EventTarget()
 $name.ESBridgeEvent = class ESBridgeEvent extends CustomEvent{
-    constructor(type, json) {
-        super(type, { detail: json });
-        Object.defineProperty(this, 'detail', {
-            value: JSON.parse(json),
-            writable: false,
-            enumerable: true,
-            configurable: false
-        });
-    }
+constructor(type, json) {
+    super(type, { detail: json });
+    Object.defineProperty(this, 'detail', {
+        value: JSON.parse(json),
+        writable: false,
+        enumerable: true,
+        configurable: false
+    });
+}
 }
 """
-            ) {
-                Log.i("ESBridge", "注入执行终了 $it")
-            }
+        ) {
+            Log.i("ESBridge", "注入执行终了 $it")
         }
+        sync.forEach { (name) -> bindCall(name) }
+        async.forEach { (name) -> bindSuspend(name) }
     }
 
     /**
@@ -130,27 +133,25 @@ $name.ESBridgeEvent = class ESBridgeEvent extends CustomEvent{
     @JavascriptInterface
     fun _list(): String = JSONArray(sync.keys.map { "$it()" } + async.keys.map { "async $it()" }).toString()
 
+    private fun bindCall(name: String) {
+        webview.evaluateJavascript("""${this.name}['$name'] = function(dict) {
+const input = JSON.stringify(dict) ?? '{}'
+const output = ${this.name}._call('$name',input)
+return JSON.parse(output)}""") {}
+    }
     /**
      * 注册一个同步函数
      */
     fun registerCall(name: String, handler: SyncHandler) {
         sync.put(name, handler)
         webview.post {
-            webview.evaluateJavascript("""${this.name}['$name'] = function(dict) {
-const input = JSON.stringify(dict) ?? '{}'
-const output = ${this.name}._call('$name',input)
-return JSON.parse(output)}""") {}
+            bindCall(name)
         }
     }
     fun register(name: String, handler: SyncHandler) = registerCall(name, handler)
 
-    /**
-     * 注册一个挂起函数
-     */
-    fun registerSuspend(name: String, handler: Handler) {
-        async.put(name, handler)
-        webview.post {
-            webview.evaluateJavascript("""${this.name}['$name'] = async function(dict) {
+    private fun bindSuspend(name: String) {
+        webview.evaluateJavascript("""${this.name}['$name'] = async function(dict) {
 const id = 'c' + this._ci++
 return new Promise((resolve, reject) => {
     const input = JSON.stringify(dict) ?? '{}'
@@ -159,6 +160,15 @@ return new Promise((resolve, reject) => {
     setTimeout(() => reject('timeout'), 5000)
 }).finally(() => delete this._callbacks[id]).then(JSON.parse)
 }""") {}
+    }
+
+    /**
+     * 注册一个挂起函数
+     */
+    fun registerSuspend(name: String, handler: Handler) {
+        async.put(name, handler)
+        webview.post {
+            bindSuspend(name)
         }
     }
 //    fun register(name: String, handler: Handler) = registerSuspend(name, handler)
