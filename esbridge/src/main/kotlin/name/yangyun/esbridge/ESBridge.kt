@@ -171,7 +171,7 @@ return new Promise((resolve, reject) => {
             bindSuspend(name)
         }
     }
-//    fun register(name: String, handler: Handler) = registerSuspend(name, handler)
+    fun register(name: String, handler: Handler) = registerSuspend(name, handler)
 
     /**
      * 调用JS已注册的函数
