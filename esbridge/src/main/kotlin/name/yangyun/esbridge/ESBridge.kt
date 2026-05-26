@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
@@ -35,25 +36,27 @@ class ESBridge(
     private val scope = (webview.context as AppCompatActivity).lifecycleScope
 
     init {
+        if (!webview.settings.javaScriptEnabled) throw Error("webview.settings.javaScriptEnabled 必须设置为 true")
         webview.addJavascriptInterface(this, name)
     }
 
     fun onPageStarted() {
-        webview.evaluateJavascript("""
+        webview.evaluateJavascript(
+            $$"""
 // 构建回调
-$name._callbacks = {} // 用于接受从Android异步返回的数据
-$name._ci=0n // 回调计数器
-$name['${'$'}list']=()=>JSON.parse($name._list())
+$$name._callbacks = {} // 用于接受从Android异步返回的数据
+$$name._ci=0n // 回调计数器
+$$name['$list']=()=>JSON.parse($$name._list())
 
 // 构建函数钩子
-$name.${'$'}hooks = {} // 提供给Android调用函数
-$name._hi=0n // 钩子计数器
-$name._promises = {} // 用于异步返回Android的承诺
-$name._pi=0n // 承诺计数器
+$$name.$hooks = {} // 提供给Android调用函数
+$$name._hi=0n // 钩子计数器
+$$name._promises = {} // 用于异步返回Android的承诺
+$$name._pi=0n // 承诺计数器
 
 // 构建事件流
-$name.${'$'}emitter = new EventTarget()
-$name.ESBridgeEvent = class ESBridgeEvent extends CustomEvent{
+$$name.$emitter = new EventTarget()
+$$name.ESBridgeEvent = class ESBridgeEvent extends CustomEvent{
 constructor(type, json) {
     super(type, { detail: json });
     Object.defineProperty(this, 'detail', {
@@ -143,12 +146,12 @@ return JSON.parse(output)}""") {}
      * 注册一个同步函数
      */
     fun registerCall(name: String, handler: SyncHandler) {
-        sync.put(name, handler)
+        sync[name] = handler
         webview.post {
             bindCall(name)
         }
     }
-    fun register(name: String, handler: SyncHandler) = registerCall(name, handler)
+//    fun register(name: String, handler: SyncHandler) = registerCall(name, handler)
 
     private fun bindSuspend(name: String) {
         webview.evaluateJavascript("""${this.name}['$name'] = async function(dict) {
@@ -166,7 +169,7 @@ return new Promise((resolve, reject) => {
      * 注册一个挂起函数
      */
     fun registerSuspend(name: String, handler: Handler) {
-        async.put(name, handler)
+        async[name] = handler
         webview.post {
             bindSuspend(name)
         }
@@ -176,11 +179,12 @@ return new Promise((resolve, reject) => {
     /**
      * 调用JS已注册的函数
      */
-    suspend fun call(name: String, data: JSONObject? = null): JSONObject = suspendCoroutine { continuation ->
-        call(name, data) {
-            continuation.resumeWith(it)
+    suspend fun call(name: String, data: JSONObject? = null): JSONObject =
+        suspendCancellableCoroutine { continuation ->
+            call(name, data) {
+                continuation.resumeWith(it)
+            }
         }
-    }
 
     /**
      * 调用JS已注册的函数
@@ -203,7 +207,7 @@ return id
                     delay(3000)
                     callback(Result.failure(Error("ESBridge 超时")))
                 }
-                callbacks.put(result) {
+                callbacks[result] = {
                     callbacks.remove(result)
                     timeout.cancel()
                     callback(it)
@@ -221,7 +225,13 @@ return id
      */
     fun dispatchEvent(event: ESBridgeEvent) {
         webview.post {
-            webview.evaluateJavascript("${this.name}.${'$'}emitter.dispatchEvent(new ${this.name}.ESBridgeEvent('${event.type}', ${JSONObject.quote(event.detail.toString())}))") {
+            webview.evaluateJavascript(
+                $$"$${this.name}.$emitter.dispatchEvent(new $${this.name}.ESBridgeEvent('$${event.type}', $${
+                    JSONObject.quote(
+                        event.detail.toString()
+                    )
+                }))"
+            ) {
                 Log.v("ESBridge", "事件分发完毕")
             }
         }
