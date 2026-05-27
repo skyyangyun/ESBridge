@@ -64,7 +64,7 @@ bridge.registerSuspend("delay") { dict ->
 const { time } = await ESBridge.delay({ time: 100 }) // time=100
 ```
 
-## 调用JavaScript钩子（回调形式）
+## 调用JavaScript钩子
 首先在 JavaScript 中向 `ESBridge.$hooks` 注册钩子函数，支持同步或异步（返回 Promise）函数：
 ```javascript
 // javascript
