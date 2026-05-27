@@ -46,7 +46,7 @@ bridge.registerCall("plus") { dict ->
 调用方式
 ```javascript
 // javascript
-const { result } = ESbridge.plus({ a: 1, b: 2}) // result=3
+const { result } = ESBridge.plus({ a: 1, b: 2}) // result=3
 ```
 
 ## Android注册挂起函数
