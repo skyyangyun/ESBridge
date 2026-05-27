@@ -4,7 +4,6 @@
 - ✅️ 支持 Kotlin 挂起函数。
 - ✅️ 支持 JavaScript 异步函数
 - ✅️ 支持 JavaScript 事件分发
-- ✅️ 支持 Kotlin 挂起函数
 - 自动JSON序列化/反序列化
 
 ## 安装
