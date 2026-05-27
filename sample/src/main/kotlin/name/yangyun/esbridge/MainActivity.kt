@@ -2,7 +2,6 @@ package name.yangyun.esbridge
 
 import android.graphics.Bitmap
 import android.os.Bundle
-import android.provider.Settings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
