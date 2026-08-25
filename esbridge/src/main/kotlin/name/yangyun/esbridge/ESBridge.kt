@@ -135,7 +135,7 @@ constructor(type, json) {
 ${this.name}['$name'] = function(dict) {
 const input = JSON.stringify(dict) ?? '{}'
 const output = ${this.name}._call('$name',input)
-return JSON.parse(output)};console.log("bind")
+return JSON.parse(output)};
 """.trimIndent()
         WebViewCompat.addDocumentStartJavaScript(webview,script, allowedOriginRules)
         webview.evaluateJavascript(script) {}

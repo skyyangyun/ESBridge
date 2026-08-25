@@ -50,10 +50,6 @@ dependencies {
 publishing {
     publications {
         create<MavenPublication>("release") {
-            groupId = "name.yangyun"
-            artifactId = "ESBridge"
-            version = "1.0"
-
             afterEvaluate {
                 from(components["release"])
             }
