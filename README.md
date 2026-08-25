@@ -6,6 +6,9 @@
 - ✅️ 支持 JavaScript 事件分发
 - 自动JSON序列化/反序列化
 
+## 依赖需求
+WebView ≥ 105
+
 ## 安装
 首先需要添加 jitpack 的源
 ```kts
@@ -23,14 +26,6 @@ implementation("com.github.skyyangyun:ESBridge:1.0.1")
 import name.yangyun.esbridge.ESBridge
 
 val bridge = ESBridge(webview, 'ESBridge') // 默认注册名称为 ESBridge
-setContentView(webview)
-// 注册页面 onPageStared 事件，以便 webview 在刷新之后能正常工作
-webview.webViewClient = object : WebViewClient() {
-    override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-        super.onPageStarted(view, url, favicon)
-        bridge.onPageStarted()
-    }
-}
 
 ```
 

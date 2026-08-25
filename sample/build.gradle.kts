@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "name.yangyun.esbridge"
-        minSdk = 23
+        minSdk = 24
         versionCode = 1
         versionName = "1.0"
 

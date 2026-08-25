@@ -1,6 +1,5 @@
 package name.yangyun.esbridge
 
-import android.graphics.Bitmap
 import android.os.Bundle
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -14,27 +13,22 @@ class MainActivity : AppCompatActivity() {
         val webview = WebView(this).apply {
             settings.javaScriptEnabled = true
         }
-        webview.loadUrl("example.com")
 
         val bridge = ESBridge(webview)
         setContentView(webview)
-
-        webview.webViewClient = object : WebViewClient() {
-            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                super.onPageStarted(view, url, favicon)
-                bridge.onPageStarted()
-            }
-
-            override fun onPageFinished(view: WebView?, url: String?) {
-                super.onPageFinished(view, url)
-                test(webview)
-            }
-        }
-
         bridge.registerCall("plus") { dict ->
             val a = dict.getInt("a")
             val b = dict.getInt("b")
             JSONObject().apply { put("result", a + b) }
+        }
+
+        webview.loadUrl("example.com")
+
+        webview.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                test(webview)
+            }
         }
 
         bridge.registerSuspend("delay") { dict ->

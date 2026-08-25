@@ -5,6 +5,7 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.webkit.WebViewCompat
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -28,7 +29,8 @@ typealias Callback = (result: Result<JSONObject>) -> Unit
 
 class ESBridge(
     val webview: WebView,
-    val name: String = "ESBridge"
+    val name: String = "ESBridge",
+    val allowedOriginRules: Set<String> = setOf("*")
 ) {
     private val sync: MutableMap<String, SyncHandler> =  mutableMapOf()
     private val async: MutableMap<String, Handler> =  mutableMapOf()
@@ -38,11 +40,7 @@ class ESBridge(
     init {
         if (!webview.settings.javaScriptEnabled) throw Error("webview.settings.javaScriptEnabled 必须设置为 true")
         webview.addJavascriptInterface(this, name)
-    }
-
-    fun onPageStarted() {
-        webview.evaluateJavascript(
-            $$"""
+        val script = $$"""
 // 构建回调
 $$name._callbacks = {} // 用于接受从Android异步返回的数据
 $$name._ci=0n // 回调计数器
@@ -67,12 +65,8 @@ constructor(type, json) {
     });
 }
 }
-"""
-        ) {
-            Log.i("ESBridge", "注入执行终了 $it")
-        }
-        sync.forEach { (name) -> bindCall(name) }
-        async.forEach { (name) -> bindSuspend(name) }
+""".trimIndent()
+        WebViewCompat.addDocumentStartJavaScript(webview, script, allowedOriginRules)
     }
 
     /**
@@ -137,10 +131,14 @@ constructor(type, json) {
     fun _list(): String = JSONArray(sync.keys.map { "$it()" } + async.keys.map { "async $it()" }).toString()
 
     private fun bindCall(name: String) {
-        webview.evaluateJavascript("""${this.name}['$name'] = function(dict) {
+        val script = """
+${this.name}['$name'] = function(dict) {
 const input = JSON.stringify(dict) ?? '{}'
 const output = ${this.name}._call('$name',input)
-return JSON.parse(output)}""") {}
+return JSON.parse(output)};console.log("bind")
+""".trimIndent()
+        WebViewCompat.addDocumentStartJavaScript(webview,script, allowedOriginRules)
+        webview.evaluateJavascript(script) {}
     }
     /**
      * 注册一个同步函数
@@ -154,7 +152,8 @@ return JSON.parse(output)}""") {}
 //    fun register(name: String, handler: SyncHandler) = registerCall(name, handler)
 
     private fun bindSuspend(name: String) {
-        webview.evaluateJavascript("""${this.name}['$name'] = async function(dict) {
+        val script = """
+${this.name}['$name'] = async function(dict) {
 const id = 'c' + this._ci++
 return new Promise((resolve, reject) => {
     const input = JSON.stringify(dict) ?? '{}'
@@ -162,7 +161,10 @@ return new Promise((resolve, reject) => {
     this._suspend('$name', input, id)
     setTimeout(() => reject('timeout'), 5000)
 }).finally(() => delete this._callbacks[id]).then(JSON.parse)
-}""") {}
+}
+        """.trimIndent()
+        WebViewCompat.addDocumentStartJavaScript(webview,script, allowedOriginRules)
+        webview.evaluateJavascript(script) {}
     }
 
     /**
