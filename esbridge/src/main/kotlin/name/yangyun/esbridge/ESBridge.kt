@@ -130,7 +130,11 @@ constructor(type, json) {
     @JavascriptInterface
     fun _list(): String = JSONArray(sync.keys.map { "$it()" } + async.keys.map { "async $it()" }).toString()
 
-    private fun bindCall(name: String) {
+    /**
+     * 注册一个同步函数
+     */
+    fun registerCall(name: String, handler: SyncHandler) {
+        sync[name] = handler
         val script = """
 ${this.name}['$name'] = function(dict) {
 const input = JSON.stringify(dict) ?? '{}'
@@ -140,18 +144,13 @@ return JSON.parse(output)};
         WebViewCompat.addDocumentStartJavaScript(webview,script, allowedOriginRules)
         webview.evaluateJavascript(script) {}
     }
-    /**
-     * 注册一个同步函数
-     */
-    fun registerCall(name: String, handler: SyncHandler) {
-        sync[name] = handler
-        webview.post {
-            bindCall(name)
-        }
-    }
 //    fun register(name: String, handler: SyncHandler) = registerCall(name, handler)
 
-    private fun bindSuspend(name: String) {
+    /**
+     * 注册一个挂起函数
+     */
+    fun registerSuspend(name: String, handler: Handler) {
+        async[name] = handler
         val script = """
 ${this.name}['$name'] = async function(dict) {
 const id = 'c' + this._ci++
@@ -165,16 +164,6 @@ return new Promise((resolve, reject) => {
         """.trimIndent()
         WebViewCompat.addDocumentStartJavaScript(webview,script, allowedOriginRules)
         webview.evaluateJavascript(script) {}
-    }
-
-    /**
-     * 注册一个挂起函数
-     */
-    fun registerSuspend(name: String, handler: Handler) {
-        async[name] = handler
-        webview.post {
-            bindSuspend(name)
-        }
     }
     fun register(name: String, handler: Handler) = registerSuspend(name, handler)
 
